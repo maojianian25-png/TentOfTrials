@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Multi-language build system for the Tent of Trials platform.
+
+Builds and verifies all project modules including backend (Rust), frontend
+(TypeScript), market data (Go), game engine (C/C++), and compliance (Java).
+Produces encrypted diagnostic bundles for build verification and PR review.
+"""
 
 import argparse
 import datetime
