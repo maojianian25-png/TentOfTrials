@@ -302,6 +302,23 @@ async function parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     data = (await response.text()) as unknown as T;
   }
 
+  // If response is not OK, throw an ApiError with structured details
+  if (!response.ok) {
+    const errorBody = typeof data === 'string' ? data : JSON.stringify(data);
+    const error: ApiError = {
+      code: response.status,
+      message: response.statusText || `HTTP ${response.status}`,
+      requestId: response.headers.get('X-Request-ID') || undefined,
+      path: response.headers.get('X-Request-Path') || undefined,
+      timestamp: new Date().toISOString(),
+      details: typeof data === 'object' && data !== null
+        ? (data as Record<string, unknown>)
+        : { body: errorBody },
+      suggestion: getSuggestionForStatus(response.status),
+    };
+    throw error;
+  }
+
   const pagination = extractPagination(response.headers);
 
   return {
@@ -311,6 +328,33 @@ async function parseResponse<T>(response: Response): Promise<ApiResponse<T>> {
     requestId: response.headers.get('X-Request-ID') || undefined,
     pagination,
   };
+}
+
+function getSuggestionForStatus(status: number): string | undefined {
+  switch (status) {
+    case 400:
+      return 'Check your request parameters and try again.';
+    case 401:
+      return 'Your session has expired. Please sign in again.';
+    case 403:
+      return 'You do not have permission to perform this action.';
+    case 404:
+      return 'The requested resource was not found.';
+    case 409:
+      return 'The resource was modified by another request. Please refresh and try again.';
+    case 422:
+      return 'The request data is invalid. Please check the validation errors.';
+    case 429:
+      return 'Too many requests. Please wait a moment and try again.';
+    case 500:
+      return 'An internal server error occurred. Please try again later.';
+    case 502:
+      return 'The server is temporarily unavailable. Please try again later.';
+    case 503:
+      return 'The service is temporarily unavailable. Please try again later.';
+    default:
+      return undefined;
+  }
 }
 
 function extractPagination(headers: Headers): PaginationInfo | undefined {
